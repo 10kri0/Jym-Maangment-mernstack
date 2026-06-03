@@ -52,8 +52,8 @@ MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
 ## Default Admin
 
 ```text
-Email: admin@am.com
-Password: 123
+Email: admin@gym.com
+Password: admin123
 ```
 
 ## Main Endpoints

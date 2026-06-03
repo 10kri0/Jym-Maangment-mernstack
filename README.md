@@ -86,8 +86,8 @@ Open:
 Default admin login:
 
 ```text
-Email: admin@am.com
-Password: 123
+Email: admin@gym.com
+Password: admin123
 ```
 
 ## Docker Compose
