@@ -57,6 +57,7 @@ JWT_SECRET=change_this_to_a_long_random_secret
 JWT_EXPIRY_HOURS=24
 MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
 VITE_API_URL=http://localhost:8000/api
+FRONTEND_ORIGINS=http://localhost:5173,https://mygymhub.vercel.app
 ```
 
 For MongoDB Atlas, replace `MONGODB_URL` with your Atlas URI.
@@ -205,6 +206,7 @@ Backend on Render:
 	- `DATABASE_NAME` = `gym_management`
 	- `JWT_SECRET` = a long random secret
 	- `JWT_EXPIRY_HOURS` = `24`
+	- `FRONTEND_ORIGINS` = `https://mygymhub.vercel.app`
 	- `PORT` = `8000` if needed by your setup
 5. Deploy and copy the public Render URL.
 
@@ -216,7 +218,7 @@ Frontend on Vercel:
 	- Build command: `npm run build`
 	- Output directory: `dist`
 3. Add environment variables:
-	- `VITE_API_URL` = `https://your-render-backend.onrender.com/api`
+	- `VITE_API_URL` = `https://gym-managementmern.onrender.com/api`
 4. Deploy the site and open the generated Vercel URL.
 
 Final checks:

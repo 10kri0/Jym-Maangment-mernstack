@@ -47,7 +47,7 @@ DATABASE_NAME=gym_management
 JWT_SECRET=change_this_to_a_long_random_secret
 JWT_EXPIRY_HOURS=24
 MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
-FRONTEND_ORIGINS=http://localhost:5173,https://amfitnesseru.vercel.app
+FRONTEND_ORIGINS=http://localhost:5173,https://mygymhub.vercel.app
 ```
 
 ## Default Seeded Logins

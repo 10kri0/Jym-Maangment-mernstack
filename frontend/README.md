@@ -47,12 +47,18 @@ npm run lint
 
 ## Environment
 
-The frontend uses `VITE_API_URL` from the root `.env` file.
+The frontend uses `VITE_API_URL` from Vite environment files.
 
 Example:
 
 ```env
 VITE_API_URL=http://localhost:8000/api
+```
+
+Production:
+
+```env
+VITE_API_URL=https://gym-managementmern.onrender.com/api
 ```
 
 If you open the app from another device on the same network, make sure the API URL points to the machine running the backend.
