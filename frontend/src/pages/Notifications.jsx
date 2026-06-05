@@ -1,12 +1,34 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { HiOutlineBell, HiOutlineClock, HiOutlineExclamationCircle, HiOutlineCash, HiOutlinePhone, HiOutlineRefresh, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineClock, HiOutlineExclamationCircle, HiOutlineCash, HiOutlineRefresh, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
+import { FaWhatsapp } from 'react-icons/fa';
 
 export default function Notifications() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('expiring');
+
+  const getWhatsAppUrl = (item) => {
+    let phone = item.mobile.replace(/\D/g, '');
+    if (phone.length === 11 && phone.startsWith('0')) {
+      phone = phone.substring(1);
+    }
+    if (phone.length === 10) {
+      phone = '91' + phone;
+    }
+    
+    let text = '';
+    if (item.type === 'expiring') {
+      text = `Hi ${item.full_name}, this is a reminder from GymHub that your membership is expiring in ${item.days_left} days. Please renew it soon.`;
+    } else if (item.type === 'expired') {
+      text = `Hi ${item.full_name}, this is a reminder from GymHub that your membership has expired. Please renew it to continue your workouts.`;
+    } else if (item.type === 'payment') {
+      text = `Hi ${item.full_name}, this is a reminder from GymHub that your membership payment is currently pending. Please complete it.`;
+    }
+    
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
 
   const fetchNotifications = async () => {
     try { const res = await api.get('/notifications'); setData(res.data); }
@@ -120,8 +142,8 @@ export default function Notifications() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <a href={`tel:${item.mobile}`} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-600 text-gray-500 transition-colors" title="Call">
-                      <HiOutlinePhone className="w-5 h-5" />
+                    <a href={getWhatsAppUrl(item)} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-600 transition-colors" title="Message on WhatsApp">
+                      <FaWhatsapp className="w-5 h-5" />
                     </a>
                     {item.type === 'payment' ? (
                       <button
