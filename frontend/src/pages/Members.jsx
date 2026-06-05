@@ -172,7 +172,7 @@ export default function Members() {
               <option value="">All Status</option><option value="active">Active</option><option value="expired">Expired</option>
             </select>
             <select value={paymentFilter} onChange={(e) => { setPaymentFilter(e.target.value); setPage(1); }} className="input-field w-auto">
-              <option value="">All Payments</option><option value="paid">Paid</option><option value="pending">Pending</option><option value="overdue">Overdue</option>
+              <option value="">All Payments</option><option value="completed">Completed</option><option value="pending">Pending</option>
             </select>
           </div>
         </div>
@@ -197,7 +197,7 @@ export default function Members() {
                       <td>{m.branch ? <span className="badge badge-info">{m.branch}</span> : <span className="text-gray-400 text-sm">-</span>}</td>
                       <td><span className="badge badge-info">{m.plan_name}</span></td>
                       <td><span className={isExpired ? 'text-rose-500 font-medium' : ''}>{new Date(m.expiry_date).toLocaleDateString('en-IN')}</span></td>
-                      <td>{m.payment_status === 'paid' ? <span className="badge badge-success">Paid</span> : m.payment_status === 'overdue' ? <span className="badge badge-danger">Overdue</span> : <span className="badge badge-warning">Pending</span>}</td>
+                      <td>{m.payment_status === 'completed' ? <span className="badge badge-success">Completed</span> : <span className="badge badge-warning">Pending</span>}</td>
                       <td>
                         <div className="flex items-center gap-1">
                           <button onClick={() => openEditModal(m)} className="p-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 text-primary-500 transition-colors" title="Edit"><HiOutlinePencil className="w-4 h-4" /></button>
@@ -251,7 +251,7 @@ export default function Members() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium mb-1">Payment Status</label>
               <select value={formData.payment_status} onChange={(e) => setFormData({...formData, payment_status: e.target.value})} className="input-field">
-                <option value="pending">Pending</option><option value="paid">Paid</option><option value="overdue">Overdue</option>
+                <option value="pending">Pending</option><option value="completed">Completed</option>
               </select>
             </div>
             <div><label className="block text-sm font-medium mb-1">Amount (₹)</label><input type="number" value={formData.amount_paid} onChange={(e) => setFormData({...formData, amount_paid: e.target.value})} className="input-field" min="0" /></div>

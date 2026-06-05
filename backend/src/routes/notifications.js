@@ -16,18 +16,28 @@ router.get('', asyncHandler(async (req, res) => {
   const now = new Date();
   const sevenDaysLater = new Date(now);
   sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+  const alertThreshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const alertQuery = {
+    admin_id: req.admin.id,
+    $or: [
+      { alert_dismissed_at: { $exists: false } },
+      { alert_dismissed_at: null },
+      { alert_dismissed_at: { $lt: alertThreshold } },
+    ],
+  };
 
   const expiringMembers = await Member.find({
-    admin_id: req.admin.id,
+    ...alertQuery,
     expiry_date: { $gte: now, $lte: sevenDaysLater },
   }).sort({ expiry_date: 1 }).lean();
   const expiredMembers = await Member.find({
-    admin_id: req.admin.id,
+    ...alertQuery,
     expiry_date: { $lt: now },
   }).sort({ expiry_date: -1 }).limit(50).lean();
   const pendingMembers = await Member.find({
-    admin_id: req.admin.id,
-    payment_status: { $in: ['pending', 'overdue'] },
+    ...alertQuery,
+    payment_status: 'pending',
   }).sort({ created_at: -1 }).lean();
 
   const expiring = await Promise.all(expiringMembers.map(async (member) => ({

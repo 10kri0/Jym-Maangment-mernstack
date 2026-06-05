@@ -34,7 +34,7 @@ app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => {
   res.json({
-    message: 'GymPro Admin Panel API',
+    message: 'GymHub Admin Panel API',
     version: '1.0.0',
     stack: 'Node.js, Express, MongoDB',
   });
@@ -67,7 +67,7 @@ async function start() {
     await connectDB();
     await seedDatabase();
     app.listen(env.PORT, '0.0.0.0', () => {
-      console.log(`GymPro API running on http://0.0.0.0:${env.PORT}`);
+      console.log(`GymHub API running on http://0.0.0.0:${env.PORT}`);
     });
   } catch (error) {
     console.error(error.message);

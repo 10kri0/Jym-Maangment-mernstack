@@ -98,7 +98,7 @@ router.post('', asyncHandler(async (req, res) => {
     admin_id: req.admin.id,
   });
 
-  if (member.payment_status === 'paid' && member.amount_paid > 0) {
+  if (member.payment_status === 'completed' && member.amount_paid > 0) {
     await Payment.create({
       member_id: member._id,
       amount: member.amount_paid,
@@ -158,7 +158,7 @@ router.post('/:member_id/renew', asyncHandler(async (req, res) => {
   const startDate = member.expiry_date > now ? member.expiry_date : now;
   member.plan_id = plan._id;
   member.expiry_date = addMonths(startDate, plan.duration_months);
-  member.payment_status = 'paid';
+  member.payment_status = 'completed';
   member.amount_paid = plan.price;
   await member.save();
 
@@ -172,6 +172,40 @@ router.post('/:member_id/renew', asyncHandler(async (req, res) => {
   });
 
   res.json(memberToResponse(member.toObject(), plan.name));
+}));
+
+router.post('/:member_id/dismiss-alert', asyncHandler(async (req, res) => {
+  validateObjectId(req.params.member_id, 'Invalid member ID');
+  const member = await Member.findOne({ _id: req.params.member_id, admin_id: req.admin.id });
+  if (!member) throw httpError(404, 'Member not found');
+  member.alert_dismissed_at = new Date();
+  await member.save();
+  res.json({ message: 'Alert dismissed successfully' });
+}));
+
+router.post('/:member_id/pay-pending', asyncHandler(async (req, res) => {
+  validateObjectId(req.params.member_id, 'Invalid member ID');
+  const member = await Member.findOne({ _id: req.params.member_id, admin_id: req.admin.id });
+  if (!member) throw httpError(404, 'Member not found');
+
+  const plan = await Plan.findOne({ _id: member.plan_id, admin_id: req.admin.id }).lean();
+  const price = plan ? plan.price : 0;
+  const planName = plan ? plan.name : 'Unknown';
+
+  member.payment_status = 'completed';
+  member.amount_paid = price;
+  await member.save();
+
+  await Payment.create({
+    member_id: member._id,
+    amount: price,
+    plan_name: planName,
+    payment_method: 'cash',
+    notes: `Pending payment completed - ${planName}`,
+    admin_id: req.admin.id,
+  });
+
+  res.json(memberToResponse(member.toObject(), planName));
 }));
 
 module.exports = router;

@@ -40,7 +40,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
     sumPayments({ admin_id: adminId, date: { $gte: todayStart } }),
     sumPayments({ admin_id: adminId, date: { $gte: monthStart } }),
     sumPayments({ admin_id: adminId, date: { $gte: yearStart } }),
-    Member.countDocuments({ admin_id: adminId, payment_status: { $in: ['pending', 'overdue'] } }),
+    Member.countDocuments({ admin_id: adminId, payment_status: 'pending' }),
   ]);
 
   const recentMembersRaw = await Member.find({ admin_id: adminId }).sort({ created_at: -1 }).limit(10).lean();

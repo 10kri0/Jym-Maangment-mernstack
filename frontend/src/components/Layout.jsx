@@ -59,11 +59,9 @@ export default function Layout({ children }) {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-200/50 dark:border-gray-700/50">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-lg shadow-primary-500/30">
-            <FaDumbbell className="text-white text-lg" />
-          </div>
+          <img src="/logo.png" alt="GymHub Logo" className="w-10 h-10 object-contain rounded-xl" />
           <div>
-            <h1 className="text-xl font-bold text-gradient">GymPro</h1>
+            <h1 className="text-xl font-bold text-gradient">GymHub</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400">Admin Panel</p>
           </div>
           <button

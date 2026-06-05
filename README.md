@@ -1,6 +1,6 @@
-# GymPro
+# GymHub
 
-GymPro is a modern gym management admin panel built with React, Vite, Tailwind CSS, Node.js, Express, and MongoDB.
+GymHub is a modern gym management admin panel built with React, Vite, Tailwind CSS, Node.js, Express, and MongoDB.
 
 It includes member management, plans, revenue analytics, reports, notifications, dark/light theme support, and a clean responsive dashboard.
 
@@ -90,7 +90,7 @@ Default seeded logins:
 
 ```text
 Superadmin: superadmin@gym.com / superadmin123
-Client admin: admin@am.com / 123
+Client admin: admin@am.com / 123456
 ```
 
 ## Docker Compose
@@ -235,7 +235,7 @@ If you want to publish this repo on GitHub:
 ```bash
 git init
 git add .
-git commit -m "Initial GymPro project"
+git commit -m "Initial GymHub project"
 git branch -M main
 git remote add origin <your-github-repo-url>
 git push -u origin main

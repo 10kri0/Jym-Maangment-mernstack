@@ -8,7 +8,7 @@ const { httpError } = require('../utils/httpError');
 const { requireAdmin } = require('../middleware/auth');
 
 const DEFAULT_ADMIN_EMAIL = 'admin@am.com';
-const DEFAULT_ADMIN_PASSWORD = '123';
+const DEFAULT_ADMIN_PASSWORD = '123456';
 const LEGACY_ADMIN_EMAIL = 'admin@gym.com';
 const LEGACY_ADMIN_PASSWORD = 'admin123';
 

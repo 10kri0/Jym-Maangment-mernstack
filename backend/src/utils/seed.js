@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const Plan = require('../models/Plan');
 const Member = require('../models/Member');
@@ -8,7 +9,7 @@ const DEFAULT_SUPERADMIN_EMAIL = 'superadmin@gym.com';
 const DEFAULT_SUPERADMIN_PASSWORD = 'superadmin123';
 
 const DEFAULT_ADMIN_EMAIL = 'admin@am.com';
-const DEFAULT_ADMIN_PASSWORD = '123';
+const DEFAULT_ADMIN_PASSWORD = '123456';
 
 function pick(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -39,6 +40,10 @@ async function seedDatabase() {
       password: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10),
       role: 'admin',
     });
+  } else {
+    // Update the password to '123456' as requested by the user
+    clientAdmin.password = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10);
+    await clientAdmin.save();
   }
 
   // Migrate legacy data if any exists without admin_id
@@ -46,13 +51,26 @@ async function seedDatabase() {
   await Member.updateMany({ admin_id: { $exists: false } }, { $set: { admin_id: clientAdmin._id } });
   await Payment.updateMany({ admin_id: { $exists: false } }, { $set: { admin_id: clientAdmin._id } });
 
-  const plansExist = await Plan.exists({});
-  if (plansExist) {
-    console.log('Database already seeded (migrated legacy documents if any)');
+  // Check if we already have historical data for 2024
+  const hasYearData = await Payment.exists({
+    admin_id: clientAdmin._id,
+    date: {
+      $gte: new Date(2024, 0, 1),
+      $lt: new Date(2025, 0, 1),
+    },
+  });
+
+  if (hasYearData) {
+    console.log('Database already seeded with historical 2024 data.');
     return;
   }
 
-  console.log('Seeding database...');
+  console.log('Seeding multi-year database (2024, 2025, 2026)...');
+
+  // Clear existing data for a clean slate
+  await Plan.deleteMany({});
+  await Member.deleteMany({});
+  await Payment.deleteMany({});
 
   const plans = await Plan.insertMany([
     {
@@ -103,69 +121,100 @@ async function seedDatabase() {
     '90 Station Road, Rajkot', '12 Lake View, Gandhinagar', '34 Civil Lines, Bhavnagar',
     '56 Mall Road, Jamnagar', '67 Market Lane, Anand', '89 Temple Road, Junagadh',
   ];
-  const paymentStatuses = ['paid', 'paid', 'paid', 'pending', 'overdue'];
   const paymentMethods = ['cash', 'upi', 'card', 'bank_transfer'];
+  const branches = ['Eru', 'Motobajr', null];
 
+  const now = new Date();
   const members = [];
   const payments = [];
-  const now = new Date();
 
-  for (let i = 0; i < 25; i += 1) {
+  // Seed 40 members with payments spanning from 2024 to 2026
+  for (let i = 0; i < 40; i += 1) {
     const plan = pick(plans);
     const fname = pick(firstNames);
     const lname = pick(lastNames);
-    const joinDate = new Date(now.getTime() - randomInt(1, 300) * 24 * 60 * 60 * 1000);
-    const expiryDate = new Date(joinDate);
-    expiryDate.setDate(expiryDate.getDate() + plan.duration_months * 30);
-    const paymentStatus = pick(paymentStatuses);
+    const memberId = new mongoose.Types.ObjectId();
 
-    const member = new Member({
+    // join date randomly between Jan 1, 2024 and 5 days ago
+    const startRange = new Date(2024, 0, 1).getTime();
+    const endRange = now.getTime() - 5 * 24 * 60 * 60 * 1000;
+    const joinTime = startRange + Math.random() * (endRange - startRange);
+    const joinDate = new Date(joinTime);
+
+    // 75% chance member is active (continues to pay), 25% chance they churned (stopped paying)
+    const isActiveMember = Math.random() < 0.75;
+
+    let currentExpiry = new Date(joinDate);
+    currentExpiry.setMonth(currentExpiry.getMonth() + plan.duration_months);
+
+    // Initial Payment
+    payments.push({
+      member_id: memberId,
+      amount: plan.price,
+      plan_name: plan.name,
+      payment_method: pick(paymentMethods),
+      date: new Date(joinDate),
+      notes: `Membership subscription - ${plan.name}`,
+      admin_id: clientAdmin._id,
+    });
+
+    let lastPaymentDate = new Date(joinDate);
+    let cycleCount = 1;
+
+    // Generate renewals chronologically
+    while (true) {
+      if (!isActiveMember && cycleCount >= randomInt(1, 3)) {
+        break;
+      }
+
+      const nextPayDate = new Date(lastPaymentDate);
+      nextPayDate.setMonth(nextPayDate.getMonth() + plan.duration_months);
+
+      // Don't generate payments in the future
+      if (nextPayDate.getTime() > now.getTime()) {
+        break;
+      }
+
+      payments.push({
+        member_id: memberId,
+        amount: plan.price,
+        plan_name: plan.name,
+        payment_method: pick(paymentMethods),
+        date: new Date(nextPayDate),
+        notes: `Membership renewal - ${plan.name}`,
+        admin_id: clientAdmin._id,
+      });
+
+      currentExpiry = new Date(nextPayDate);
+      currentExpiry.setMonth(currentExpiry.getMonth() + plan.duration_months);
+      lastPaymentDate = nextPayDate;
+      cycleCount += 1;
+    }
+
+    let paymentStatus = 'pending';
+    if (currentExpiry.getTime() >= now.getTime()) {
+      paymentStatus = 'completed';
+    }
+
+    members.push({
+      _id: memberId,
       full_name: `${fname} ${lname}`,
       mobile: `9${randomInt(100000000, 999999999)}`,
       email: `${fname.toLowerCase()}.${lname.toLowerCase()}${randomInt(1, 99)}@gmail.com`,
       address: pick(addresses),
+      branch: pick(branches),
       plan_id: plan._id,
       join_date: joinDate,
-      expiry_date: expiryDate,
+      expiry_date: currentExpiry,
       payment_status: paymentStatus,
-      amount_paid: paymentStatus === 'paid' ? plan.price : 0,
+      amount_paid: paymentStatus === 'completed' ? plan.price : 0,
       admin_id: clientAdmin._id,
-      created_at: joinDate,
-      updated_at: joinDate,
     });
-    members.push(member);
-
-    if (paymentStatus === 'paid') {
-      payments.push({
-        member_id: member._id,
-        amount: plan.price,
-        plan_name: plan.name,
-        payment_method: pick(paymentMethods),
-        date: new Date(joinDate.getTime() + randomInt(0, 12) * 60 * 60 * 1000),
-        notes: `Membership payment - ${plan.name}`,
-        admin_id: clientAdmin._id,
-      });
-    }
   }
 
   await Member.insertMany(members);
-
-  for (let i = 0; i < 40; i += 1) {
-    const plan = pick(plans);
-    const member = pick(members);
-    payments.push({
-      member_id: member._id,
-      amount: plan.price,
-      plan_name: plan.name,
-      payment_method: pick(paymentMethods),
-      date: new Date(now.getTime() - randomInt(1, 365) * 24 * 60 * 60 * 1000),
-      notes: `Renewal payment - ${plan.name}`,
-      admin_id: clientAdmin._id,
-    });
-  }
-
   await Payment.insertMany(payments);
-  console.log('Database seeding complete');
+  console.log(`Database seeding complete. Inserted ${members.length} members and ${payments.length} payments.`);
 }
 
 module.exports = { seedDatabase };

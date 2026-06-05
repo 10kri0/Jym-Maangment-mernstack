@@ -1,6 +1,6 @@
-# GymPro Frontend
+# GymHub Frontend
 
-The GymPro frontend is a responsive React + Vite admin dashboard for managing gym members, plans, revenue, reports, and notifications.
+The GymHub frontend is a responsive React + Vite admin dashboard for managing gym members, plans, revenue, reports, and notifications.
 
 ## Features
 
@@ -69,7 +69,7 @@ Default admin credentials:
 
 ```text
 Email: admin@am.com
-Password: 123
+Password: 123456
 ```
 
 ## Notes

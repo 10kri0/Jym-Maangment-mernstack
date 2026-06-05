@@ -1,6 +1,6 @@
 {
-  "name": "GymPro Admin Panel",
-  "short_name": "GymPro",
+  "name": "GymHub Admin Panel",
+  "short_name": "GymHub",
   "description": "Modern Gym Management Admin Panel",
   "start_url": "/",
   "display": "standalone",

@@ -1,6 +1,6 @@
-# GymPro Backend
+# GymHub Backend
 
-GymPro Backend is an Express + MongoDB API that powers the GymPro admin dashboard.
+GymHub Backend is an Express + MongoDB API that powers the GymHub admin dashboard.
 
 ## What It Does
 
@@ -54,7 +54,7 @@ FRONTEND_ORIGINS=http://localhost:5173,https://mygymhub.vercel.app
 
 ```text
 Superadmin: superadmin@gym.com / superadmin123
-Client admin: admin@am.com / 123
+Client admin: admin@am.com / 123456
 ```
 
 ## Main Endpoints

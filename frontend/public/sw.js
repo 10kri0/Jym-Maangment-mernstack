@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gympro-v1';
+const CACHE_NAME = 'gymhub-v1';
 const OFFLINE_URLS = [
   '/',
   '/index.html',

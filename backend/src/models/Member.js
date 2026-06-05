@@ -12,12 +12,13 @@ const memberSchema = new mongoose.Schema(
     expiry_date: { type: Date, required: true, index: true },
     payment_status: {
       type: String,
-      enum: ['paid', 'pending', 'overdue'],
+      enum: ['completed', 'pending'],
       default: 'pending',
       index: true,
     },
     amount_paid: { type: Number, default: 0 },
     notes: { type: String, default: null },
+    alert_dismissed_at: { type: Date, default: null },
     admin_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true, index: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }

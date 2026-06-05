@@ -273,7 +273,7 @@ export default function Dashboard() {
                     <td>
                       {isExpired ? (
                         <span className="badge badge-danger">Expired</span>
-                      ) : member.payment_status === 'paid' ? (
+                      ) : member.payment_status === 'completed' ? (
                         <span className="badge badge-success">Active</span>
                       ) : (
                         <span className="badge badge-warning">{member.payment_status}</span>

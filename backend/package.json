@@ -1,7 +1,7 @@
 {
-  "name": "gympro-backend",
+  "name": "gymhub-backend",
   "version": "1.0.0",
-  "description": "GymPro Express and MongoDB API",
+  "description": "GymHub Express and MongoDB API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

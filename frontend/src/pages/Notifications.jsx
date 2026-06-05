@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { HiOutlineBell, HiOutlineClock, HiOutlineExclamationCircle, HiOutlineCash, HiOutlinePhone, HiOutlineRefresh } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineClock, HiOutlineExclamationCircle, HiOutlineCash, HiOutlinePhone, HiOutlineRefresh, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 
 export default function Notifications() {
   const [data, setData] = useState(null);
@@ -15,6 +15,28 @@ export default function Notifications() {
       toast.error('Failed to load notifications');
     }
     finally { setLoading(false); }
+  };
+
+  const handleDismiss = async (memberId) => {
+    try {
+      await api.post(`/members/${memberId}/dismiss-alert`);
+      toast.success('Alert dismissed for 24 hours');
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to dismiss alert');
+    }
+  };
+
+  const handlePayPending = async (memberId) => {
+    try {
+      await api.post(`/members/${memberId}/pay-pending`);
+      toast.success('Payment completed successfully!');
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update payment status');
+    }
   };
 
   useEffect(() => {
@@ -101,6 +123,23 @@ export default function Notifications() {
                     <a href={`tel:${item.mobile}`} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-600 text-gray-500 transition-colors" title="Call">
                       <HiOutlinePhone className="w-5 h-5" />
                     </a>
+                    {item.type === 'payment' ? (
+                      <button
+                        onClick={() => handlePayPending(item.id)}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-600 text-emerald-500 hover:text-emerald-600 transition-colors"
+                        title="Mark as Paid"
+                      >
+                        <HiOutlineCheck className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDismiss(item.id)}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-600 text-rose-500 hover:text-rose-600 transition-colors"
+                        title="Dismiss Alert (24h)"
+                      >
+                        <HiOutlineX className="w-5 h-5" />
+                      </button>
+                    )}
                     {(item.type === 'expiring' || item.type === 'expired') && (
                       <span className={`badge ${item.type === 'expiring' ? 'badge-warning' : 'badge-danger'}`}>
                         {item.type === 'expiring' ? `${item.days_left}d left` : 'Expired'}
