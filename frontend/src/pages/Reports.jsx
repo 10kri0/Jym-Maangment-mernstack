@@ -31,6 +31,7 @@ export default function Reports() {
       window.URL.revokeObjectURL(url);
       toast.success(`${type} ${format.toUpperCase()} report downloaded!`);
     } catch (err) {
+      console.error(err);
       toast.error('Failed to download report');
     } finally {
       setLoading((prev) => ({ ...prev, [key]: false }));

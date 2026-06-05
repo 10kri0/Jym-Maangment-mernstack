@@ -11,6 +11,7 @@ const paymentSchema = new mongoose.Schema({
   },
   date: { type: Date, default: Date.now, index: true },
   notes: { type: String, default: null },
+  admin_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true, index: true },
 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

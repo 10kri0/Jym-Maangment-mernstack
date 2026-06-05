@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const { requireAdmin } = require('../middleware/auth');
 const { asyncHandler } = require('../utils/asyncHandler');
@@ -7,9 +8,9 @@ const { parseDate } = require('../utils/dates');
 const router = express.Router();
 router.use(requireAdmin);
 
-async function groupedRevenue(match, groupId, projectField) {
+async function groupedRevenue(adminId, match, groupId, projectField) {
   return Payment.aggregate([
-    { $match: match },
+    { $match: { admin_id: adminId, ...match } },
     { $group: { _id: groupId, revenue: { $sum: '$amount' }, transactions: { $sum: 1 } } },
     { $sort: { _id: 1 } },
     { $project: { _id: 0, [projectField]: '$_id', revenue: 1, transactions: 1 } },
@@ -17,6 +18,7 @@ async function groupedRevenue(match, groupId, projectField) {
 }
 
 router.get('/daily', asyncHandler(async (req, res) => {
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
   let start = parseDate(req.query.start_date);
   let end = parseDate(req.query.end_date);
   if (!start || !end) {
@@ -26,6 +28,7 @@ router.get('/daily', asyncHandler(async (req, res) => {
   }
 
   const data = await groupedRevenue(
+    adminId,
     { date: { $gte: start, $lte: end } },
     { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
     'date'
@@ -34,11 +37,13 @@ router.get('/daily', asyncHandler(async (req, res) => {
 }));
 
 router.get('/weekly', asyncHandler(async (req, res) => {
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
   const end = new Date();
   const start = new Date(end);
   start.setDate(start.getDate() - Number(req.query.weeks || 12) * 7);
 
   const data = await groupedRevenue(
+    adminId,
     { date: { $gte: start, $lte: end } },
     { $concat: [{ $toString: { $isoWeekYear: '$date' } }, '-W', { $toString: { $isoWeek: '$date' } }] },
     'week'
@@ -47,6 +52,7 @@ router.get('/weekly', asyncHandler(async (req, res) => {
 }));
 
 router.get('/monthly', asyncHandler(async (req, res) => {
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
   let start;
   let end;
   if (req.query.year) {
@@ -60,6 +66,7 @@ router.get('/monthly', asyncHandler(async (req, res) => {
   }
 
   const data = await groupedRevenue(
+    adminId,
     { date: { $gte: start, $lte: end } },
     { $dateToString: { format: '%Y-%m', date: '$date' } },
     'month'
@@ -68,7 +75,9 @@ router.get('/monthly', asyncHandler(async (req, res) => {
 }));
 
 router.get('/yearly', asyncHandler(async (req, res) => {
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
   const data = await groupedRevenue(
+    adminId,
     {},
     { $dateToString: { format: '%Y', date: '$date' } },
     'year'
@@ -77,18 +86,22 @@ router.get('/yearly', asyncHandler(async (req, res) => {
 }));
 
 router.get('/metrics', asyncHandler(async (req, res) => {
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonthEnd = new Date(currentMonthStart.getTime() - 1000);
 
-  const totalData = await Payment.aggregate([{ $group: { _id: null, total: { $sum: '$amount' } } }]);
+  const totalData = await Payment.aggregate([
+    { $match: { admin_id: adminId } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
   const currentData = await Payment.aggregate([
-    { $match: { date: { $gte: currentMonthStart } } },
+    { $match: { admin_id: adminId, date: { $gte: currentMonthStart } } },
     { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
   const prevData = await Payment.aggregate([
-    { $match: { date: { $gte: prevMonthStart, $lte: prevMonthEnd } } },
+    { $match: { admin_id: adminId, date: { $gte: prevMonthStart, $lte: prevMonthEnd } } },
     { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
 
@@ -100,18 +113,21 @@ router.get('/metrics', asyncHandler(async (req, res) => {
     : 0;
 
   const bestPlan = (await Payment.aggregate([
+    { $match: { admin_id: adminId } },
     { $group: { _id: '$plan_name', total_revenue: { $sum: '$amount' }, total_subscriptions: { $sum: 1 } } },
     { $sort: { total_revenue: -1 } },
     { $limit: 1 },
   ]))[0] || { _id: 'N/A', total_revenue: 0, total_subscriptions: 0 };
 
   const bestMonth = (await Payment.aggregate([
+    { $match: { admin_id: adminId } },
     { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$date' } }, revenue: { $sum: '$amount' } } },
     { $sort: { revenue: -1 } },
     { $limit: 1 },
   ]))[0] || { _id: 'N/A', revenue: 0 };
 
   const planRevenues = await Payment.aggregate([
+    { $match: { admin_id: adminId } },
     { $group: { _id: '$plan_name', revenue: { $sum: '$amount' }, count: { $sum: 1 } } },
     { $sort: { revenue: -1 } },
     { $project: { _id: 0, plan_name: '$_id', revenue: 1, subscriptions: '$count' } },

@@ -12,13 +12,38 @@ export default function Plans() {
   const [showDelete, setShowDelete] = useState(null);
   const [formData, setFormData] = useState({ name: '', duration_months: 1, price: 0, description: '', is_active: true });
 
-  useEffect(() => { fetchPlans(); }, []);
-
   const fetchPlans = async () => {
     try { const res = await api.get('/plans'); setPlans(res.data.plans); }
-    catch (err) { toast.error('Failed to load plans'); }
+    catch (err) {
+      console.error(err);
+      toast.error('Failed to load plans');
+    }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const res = await api.get('/plans');
+        if (active) {
+          setPlans(res.data.plans);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to load plans');
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const openAdd = () => {
     setEditPlan(null);

@@ -20,6 +20,8 @@ It includes member management, plans, revenue analytics, reports, notifications,
 - Database: MongoDB Atlas or local MongoDB
 - Optional: Docker and Docker Compose
 
+The backend seeds demo data on first run and can fall back to a temporary in-memory MongoDB for local development if the configured database is unreachable.
+
 ## Project Layout
 
 ```text
@@ -83,11 +85,11 @@ Open:
 - Backend: `http://localhost:8000`
 - Health check: `http://localhost:8000/api/health`
 
-Default admin login:
+Default seeded logins:
 
 ```text
-Email: admin@gym.com
-Password: admin123
+Superadmin: superadmin@gym.com / superadmin123
+Client admin: admin@am.com / 123
 ```
 
 ## Docker Compose
@@ -142,6 +144,87 @@ cd frontend && npm run lint
 - If the frontend cannot reach the backend, confirm `VITE_API_URL` points to the correct host.
 - If MongoDB is unreachable, use Docker Compose or verify the Atlas IP whitelist.
 - If a port is busy, stop the old process or change the port before restarting.
+
+## Deployment
+
+The simplest production setup for this repo is:
+
+1. Deploy the backend as a Node.js service.
+2. Deploy the frontend as a static site.
+3. Point the frontend at the backend with `VITE_API_URL`.
+4. Keep MongoDB on Atlas or another managed MongoDB service.
+
+Recommended providers:
+
+- Frontend: Vercel or Netlify
+- Backend: Render, Railway, Fly.io, or a VPS with Docker
+- Database: MongoDB Atlas
+
+Backend environment variables:
+
+```env
+MONGODB_URL=<your-mongodb-connection-string>
+DATABASE_NAME=gym_management
+JWT_SECRET=<strong-random-secret>
+JWT_EXPIRY_HOURS=24
+PORT=8000
+```
+
+Frontend environment variables:
+
+```env
+VITE_API_URL=https://your-backend-domain.com/api
+```
+
+Deployment checklist:
+
+- Build the frontend with `npm run build` before publishing.
+- Set `VITE_API_URL` to the real backend URL in production.
+- Make sure the backend allows requests from your frontend domain via CORS.
+- Verify MongoDB Atlas network access allows your backend host.
+- Test these URLs after deploy: `/`, `/api/health`, and `/login`.
+
+### Render + Vercel
+
+This is the recommended setup for this project:
+
+- Render hosts the backend API.
+- Vercel hosts the frontend React app.
+- MongoDB Atlas stores the database.
+
+Backend on Render:
+
+1. Push the repo to GitHub.
+2. In Render, create a new Web Service from the `backend` folder.
+3. Use these settings:
+	- Build command: `npm install`
+	- Start command: `npm start`
+	- Node version: 20
+4. Add environment variables:
+	- `MONGODB_URL` = your MongoDB Atlas URI
+	- `DATABASE_NAME` = `gym_management`
+	- `JWT_SECRET` = a long random secret
+	- `JWT_EXPIRY_HOURS` = `24`
+	- `PORT` = `8000` if needed by your setup
+5. Deploy and copy the public Render URL.
+
+Frontend on Vercel:
+
+1. Create a new Vercel project from the `frontend` folder.
+2. Use these settings:
+	- Framework preset: Vite
+	- Build command: `npm run build`
+	- Output directory: `dist`
+3. Add environment variables:
+	- `VITE_API_URL` = `https://your-render-backend.onrender.com/api`
+4. Deploy the site and open the generated Vercel URL.
+
+Final checks:
+
+- Open the frontend URL and log in.
+- Confirm `/api/health` works on the backend URL.
+- If login fails, confirm `VITE_API_URL` matches the Render backend URL exactly.
+- If the backend cannot connect to MongoDB Atlas, check Atlas network access and the connection string.
 
 ## GitHub Setup
 

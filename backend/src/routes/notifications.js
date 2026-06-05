@@ -7,8 +7,8 @@ const { asyncHandler } = require('../utils/asyncHandler');
 const router = express.Router();
 router.use(requireAdmin);
 
-async function withPlanName(member) {
-  const plan = await Plan.findById(member.plan_id).lean();
+async function withPlanName(member, adminId) {
+  const plan = await Plan.findOne({ _id: member.plan_id, admin_id: adminId }).lean();
   return plan?.name || 'Unknown';
 }
 
@@ -18,12 +18,15 @@ router.get('', asyncHandler(async (req, res) => {
   sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
 
   const expiringMembers = await Member.find({
+    admin_id: req.admin.id,
     expiry_date: { $gte: now, $lte: sevenDaysLater },
   }).sort({ expiry_date: 1 }).lean();
   const expiredMembers = await Member.find({
+    admin_id: req.admin.id,
     expiry_date: { $lt: now },
   }).sort({ expiry_date: -1 }).limit(50).lean();
   const pendingMembers = await Member.find({
+    admin_id: req.admin.id,
     payment_status: { $in: ['pending', 'overdue'] },
   }).sort({ created_at: -1 }).lean();
 
@@ -31,7 +34,7 @@ router.get('', asyncHandler(async (req, res) => {
     id: String(member._id),
     full_name: member.full_name,
     mobile: member.mobile,
-    plan_name: await withPlanName(member),
+    plan_name: await withPlanName(member, req.admin.id),
     expiry_date: member.expiry_date.toISOString(),
     days_left: Math.floor((member.expiry_date - now) / (24 * 60 * 60 * 1000)),
     type: 'expiring',
@@ -41,7 +44,7 @@ router.get('', asyncHandler(async (req, res) => {
     id: String(member._id),
     full_name: member.full_name,
     mobile: member.mobile,
-    plan_name: await withPlanName(member),
+    plan_name: await withPlanName(member, req.admin.id),
     expiry_date: member.expiry_date.toISOString(),
     days_expired: Math.floor((now - member.expiry_date) / (24 * 60 * 60 * 1000)),
     type: 'expired',
@@ -51,7 +54,7 @@ router.get('', asyncHandler(async (req, res) => {
     id: String(member._id),
     full_name: member.full_name,
     mobile: member.mobile,
-    plan_name: await withPlanName(member),
+    plan_name: await withPlanName(member, req.admin.id),
     payment_status: member.payment_status,
     amount_paid: member.amount_paid || 0,
     type: 'payment',

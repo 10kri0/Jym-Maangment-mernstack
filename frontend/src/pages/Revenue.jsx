@@ -6,6 +6,19 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4'];
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload?.length) {
+    return (
+      <div className="glass-card px-4 py-3 !rounded-xl">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-sm text-primary-500">₹{payload[0].value?.toLocaleString('en-IN')}</p>
+        {payload[0].payload.transactions && <p className="text-xs text-gray-500">{payload[0].payload.transactions} transactions</p>}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Revenue() {
   const [activeTab, setActiveTab] = useState('daily');
   const [chartData, setChartData] = useState([]);
@@ -13,23 +26,50 @@ export default function Revenue() {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  useEffect(() => { fetchChart(); }, [activeTab, year]);
-  useEffect(() => { fetchMetrics(); }, []);
+  useEffect(() => {
+    let active = true;
 
-  const fetchChart = async () => {
-    setLoading(true);
-    try {
-      const params = activeTab === 'monthly' ? { year } : {};
-      const res = await api.get(`/revenue/${activeTab}`, { params });
-      setChartData(res.data.data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
-  };
+    (async () => {
+      setLoading(true);
 
-  const fetchMetrics = async () => {
-    try { const res = await api.get('/revenue/metrics'); setMetrics(res.data); }
-    catch (err) { console.error(err); }
-  };
+      try {
+        const params = activeTab === 'monthly' ? { year } : {};
+        const res = await api.get(`/revenue/${activeTab}`, { params });
+        if (active) {
+          setChartData(res.data.data || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [activeTab, year]);
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const res = await api.get('/revenue/metrics');
+        if (active) {
+          setMetrics(res.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const tabs = [
     { key: 'daily', label: 'Daily' },
@@ -49,19 +89,6 @@ export default function Revenue() {
     if (activeTab === 'daily') return v?.slice(5);
     if (activeTab === 'monthly') return v?.slice(5);
     return v;
-  };
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload?.length) {
-      return (
-        <div className="glass-card px-4 py-3 !rounded-xl">
-          <p className="text-sm font-semibold">{label}</p>
-          <p className="text-sm text-primary-500">₹{payload[0].value?.toLocaleString('en-IN')}</p>
-          {payload[0].payload.transactions && <p className="text-xs text-gray-500">{payload[0].payload.transactions} transactions</p>}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (

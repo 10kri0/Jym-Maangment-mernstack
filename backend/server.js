@@ -9,11 +9,27 @@ const planRoutes = require('./src/routes/plans');
 const revenueRoutes = require('./src/routes/revenue');
 const reportRoutes = require('./src/routes/reports');
 const notificationRoutes = require('./src/routes/notifications');
+const adminRoutes = require('./src/routes/admins');
 const { env } = require('./src/config/env');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = new Set([
+  ...env.FRONTEND_ORIGINS,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+}));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => {
@@ -35,6 +51,7 @@ app.use('/api/plans', planRoutes);
 app.use('/api/revenue', revenueRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admins', adminRoutes);
 
 app.use((err, req, res, next) => {
   const status = err.status || 500;

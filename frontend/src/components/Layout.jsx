@@ -14,23 +14,31 @@ import {
   HiOutlineSun,
   HiOutlineMenu,
   HiOutlineX,
+  HiOutlineCog,
+  HiOutlineShieldCheck,
 } from 'react-icons/hi';
 import { FaDumbbell } from 'react-icons/fa';
 
-const navItems = [
-  { path: '/', icon: HiOutlineHome, label: 'Dashboard' },
-  { path: '/members', icon: HiOutlineUsers, label: 'Members' },
-  { path: '/plans', icon: HiOutlineCreditCard, label: 'Plans' },
-  { path: '/revenue', icon: HiOutlineChartBar, label: 'Revenue' },
-  { path: '/reports', icon: HiOutlineDocumentReport, label: 'Reports' },
-  { path: '/notifications', icon: HiOutlineBell, label: 'Alerts' },
-];
-
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { adminName, logout } = useAuth();
+  const { adminName, adminRole, logout } = useAuth();
   const { darkMode, toggleTheme } = useTheme();
   const location = useLocation();
+
+  const navItems = adminRole === 'superadmin'
+    ? [
+        { path: '/admins', icon: HiOutlineShieldCheck, label: 'Clients' },
+        { path: '/settings', icon: HiOutlineCog, label: 'Settings' },
+      ]
+    : [
+        { path: '/', icon: HiOutlineHome, label: 'Dashboard' },
+        { path: '/members', icon: HiOutlineUsers, label: 'Members' },
+        { path: '/plans', icon: HiOutlineCreditCard, label: 'Plans' },
+        { path: '/revenue', icon: HiOutlineChartBar, label: 'Revenue' },
+        { path: '/reports', icon: HiOutlineDocumentReport, label: 'Reports' },
+        { path: '/notifications', icon: HiOutlineBell, label: 'Alerts' },
+        { path: '/settings', icon: HiOutlineCog, label: 'Settings' },
+      ];
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -92,7 +100,9 @@ export default function Layout({ children }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{adminName || 'Admin'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {adminRole === 'superadmin' ? 'Super Admin' : 'Administrator'}
+              </p>
             </div>
           </div>
           <button
@@ -136,13 +146,15 @@ export default function Layout({ children }) {
                 <HiOutlineMoon className="w-5 h-5 text-gray-600" />
               )}
             </button>
-            <NavLink
-              to="/notifications"
-              className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-600 transition-all duration-200 relative"
-            >
-              <HiOutlineBell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            </NavLink>
+            {adminRole !== 'superadmin' && (
+              <NavLink
+                to="/notifications"
+                className="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-600 transition-all duration-200 relative"
+              >
+                <HiOutlineBell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              </NavLink>
+            )}
           </div>
         </header>
 

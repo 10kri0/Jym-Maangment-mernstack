@@ -10,6 +10,10 @@ const env = {
   MONGODB_SERVER_SELECTION_TIMEOUT_MS: Number(
     process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000
   ),
+  FRONTEND_ORIGINS: (process.env.FRONTEND_ORIGINS || 'http://localhost:5173,https://amfitnesseru.vercel.app')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };
 
 module.exports = { env };

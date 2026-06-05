@@ -18,6 +18,7 @@ const memberSchema = new mongoose.Schema(
     },
     amount_paid: { type: Number, default: 0 },
     notes: { type: String, default: null },
+    admin_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true, index: true },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

@@ -8,13 +8,20 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('expiring');
 
-  useEffect(() => { fetchNotifications(); }, []);
-
   const fetchNotifications = async () => {
     try { const res = await api.get('/notifications'); setData(res.data); }
-    catch (err) { toast.error('Failed to load notifications'); }
+    catch (err) {
+      console.error(err);
+      toast.error('Failed to load notifications');
+    }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchNotifications();
+    });
+  }, []);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>;
   if (!data) return <div className="text-center py-12 text-gray-500">Failed to load notifications</div>;

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Member = require('../models/Member');
 const Plan = require('../models/Plan');
 const Payment = require('../models/Payment');
@@ -22,6 +23,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
   const todayStart = startOfDay(now);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const yearStart = new Date(now.getFullYear(), 0, 1);
+  const adminId = new mongoose.Types.ObjectId(req.admin.id);
 
   const [
     totalMembers,
@@ -32,18 +34,18 @@ router.get('/stats', asyncHandler(async (req, res) => {
     annualRevenue,
     pendingPayments,
   ] = await Promise.all([
-    Member.countDocuments({}),
-    Member.countDocuments({ expiry_date: { $gte: now } }),
-    Member.countDocuments({ expiry_date: { $lt: now } }),
-    sumPayments({ date: { $gte: todayStart } }),
-    sumPayments({ date: { $gte: monthStart } }),
-    sumPayments({ date: { $gte: yearStart } }),
-    Member.countDocuments({ payment_status: { $in: ['pending', 'overdue'] } }),
+    Member.countDocuments({ admin_id: adminId }),
+    Member.countDocuments({ admin_id: adminId, expiry_date: { $gte: now } }),
+    Member.countDocuments({ admin_id: adminId, expiry_date: { $lt: now } }),
+    sumPayments({ admin_id: adminId, date: { $gte: todayStart } }),
+    sumPayments({ admin_id: adminId, date: { $gte: monthStart } }),
+    sumPayments({ admin_id: adminId, date: { $gte: yearStart } }),
+    Member.countDocuments({ admin_id: adminId, payment_status: { $in: ['pending', 'overdue'] } }),
   ]);
 
-  const recentMembersRaw = await Member.find().sort({ created_at: -1 }).limit(10).lean();
+  const recentMembersRaw = await Member.find({ admin_id: adminId }).sort({ created_at: -1 }).limit(10).lean();
   const recentMembers = await Promise.all(recentMembersRaw.map(async (member) => {
-    const plan = await Plan.findById(member.plan_id).lean();
+    const plan = await Plan.findOne({ _id: member.plan_id, admin_id: adminId }).lean();
     return {
       id: String(member._id),
       full_name: member.full_name,
@@ -58,7 +60,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
   const sevenDaysAgo = new Date(todayStart);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   const revenueTrend = await Payment.aggregate([
-    { $match: { date: { $gte: sevenDaysAgo } } },
+    { $match: { admin_id: adminId, date: { $gte: sevenDaysAgo } } },
     {
       $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
@@ -71,6 +73,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
   ]);
 
   const planDistribution = await Member.aggregate([
+    { $match: { admin_id: adminId } },
     { $lookup: { from: 'plans', localField: 'plan_id', foreignField: '_id', as: 'plan' } },
     { $unwind: { path: '$plan', preserveNullAndEmptyArrays: true } },
     { $group: { _id: '$plan.name', count: { $sum: 1 } } },

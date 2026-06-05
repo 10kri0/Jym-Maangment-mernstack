@@ -19,25 +19,23 @@ import {
 
 const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#06b6d4'];
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="glass-card px-4 py-3 !rounded-xl">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-sm text-primary-500">₹{payload[0].value?.toLocaleString('en-IN')}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [dailyRevenue, setDailyRevenue] = useState([]);
-
-  useEffect(() => {
-    fetchStats();
-    fetchDailyRevenue();
-  }, []);
-
-  const fetchDailyRevenue = async () => {
-    try {
-      const res = await api.get('/revenue/daily', { params: { days: 30 } });
-      setDailyRevenue(res.data.data || []);
-    } catch (err) {
-      console.error('Failed to fetch daily revenue:', err);
-    }
-  };
 
   const fetchStats = async () => {
     try {
@@ -49,6 +47,34 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
+      try {
+        const [statsRes, revenueRes] = await Promise.all([
+          api.get('/dashboard/stats'),
+          api.get('/revenue/daily', { params: { days: 30 } }),
+        ]);
+
+        if (active) {
+          setStats(statsRes.data);
+          setDailyRevenue(revenueRes.data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -66,18 +92,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="glass-card px-4 py-3 !rounded-xl">
-          <p className="text-sm font-semibold">{label}</p>
-          <p className="text-sm text-primary-500">₹{payload[0].value?.toLocaleString('en-IN')}</p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -16,11 +16,25 @@ async function requireAdmin(req, res, next) {
       return res.status(401).json({ detail: 'Admin not found' });
     }
 
-    req.admin = { email: admin.email, name: admin.name };
+    req.admin = {
+      id: String(admin._id),
+      email: admin.email,
+      name: admin.name,
+      role: admin.role || 'admin',
+    };
     next();
   } catch (error) {
     res.status(401).json({ detail: 'Invalid or expired token' });
   }
 }
 
-module.exports = { requireAdmin };
+async function requireSuperadmin(req, res, next) {
+  requireAdmin(req, res, () => {
+    if (req.admin.role !== 'superadmin') {
+      return res.status(403).json({ detail: 'Access denied: Superadmin privileges required' });
+    }
+    next();
+  });
+}
+
+module.exports = { requireAdmin, requireSuperadmin };

@@ -16,8 +16,8 @@ function validateObjectId(id, message = 'Invalid ID') {
   if (!ObjectId.isValid(id)) throw httpError(400, message);
 }
 
-async function findPlanName(planId) {
-  const plan = await Plan.findById(planId).lean();
+async function findPlanName(planId, adminId) {
+  const plan = await Plan.findOne({ _id: planId, admin_id: adminId }).lean();
   return plan ? plan.name : 'Unknown';
 }
 
@@ -27,7 +27,7 @@ router.get('', asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page || 1), 1);
   const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 100);
   const skip = (page - 1) * limit;
-  const query = {};
+  const query = { admin_id: req.admin.id };
   const now = new Date();
 
   if (req.query.search) {
@@ -47,7 +47,7 @@ router.get('', asyncHandler(async (req, res) => {
   const total = await Member.countDocuments(query);
   const members = await Member.find(query).sort({ created_at: -1 }).skip(skip).limit(limit).lean();
   const data = await Promise.all(members.map(async (member) => (
-    memberToResponse(member, await findPlanName(member.plan_id))
+    memberToResponse(member, await findPlanName(member.plan_id, req.admin.id))
   )));
 
   res.json({
@@ -61,11 +61,11 @@ router.get('', asyncHandler(async (req, res) => {
 
 router.get('/:member_id', asyncHandler(async (req, res) => {
   validateObjectId(req.params.member_id, 'Invalid member ID');
-  const member = await Member.findById(req.params.member_id).lean();
+  const member = await Member.findOne({ _id: req.params.member_id, admin_id: req.admin.id }).lean();
   if (!member) throw httpError(404, 'Member not found');
 
-  const payments = await Payment.find({ member_id: member._id }).sort({ date: -1 }).lean();
-  const response = memberToResponse(member, await findPlanName(member.plan_id));
+  const payments = await Payment.find({ member_id: member._id, admin_id: req.admin.id }).sort({ date: -1 }).lean();
+  const response = memberToResponse(member, await findPlanName(member.plan_id, req.admin.id));
   response.payments = payments.map((payment) => ({
     id: String(payment._id),
     amount: payment.amount,
@@ -80,7 +80,7 @@ router.get('/:member_id', asyncHandler(async (req, res) => {
 router.post('', asyncHandler(async (req, res) => {
   const body = req.body;
   validateObjectId(body.plan_id, 'Invalid plan ID');
-  const plan = await Plan.findById(body.plan_id).lean();
+  const plan = await Plan.findOne({ _id: body.plan_id, admin_id: req.admin.id }).lean();
   if (!plan) throw httpError(404, 'Plan not found');
 
   const member = await Member.create({
@@ -95,6 +95,7 @@ router.post('', asyncHandler(async (req, res) => {
     payment_status: body.payment_status || 'pending',
     amount_paid: Number(body.amount_paid || 0),
     notes: body.notes || null,
+    admin_id: req.admin.id,
   });
 
   if (member.payment_status === 'paid' && member.amount_paid > 0) {
@@ -104,6 +105,7 @@ router.post('', asyncHandler(async (req, res) => {
       plan_name: plan.name,
       payment_method: 'cash',
       notes: `Initial membership payment - ${plan.name}`,
+      admin_id: req.admin.id,
     });
   }
 
@@ -112,7 +114,7 @@ router.post('', asyncHandler(async (req, res) => {
 
 router.put('/:member_id', asyncHandler(async (req, res) => {
   validateObjectId(req.params.member_id, 'Invalid member ID');
-  const member = await Member.findById(req.params.member_id);
+  const member = await Member.findOne({ _id: req.params.member_id, admin_id: req.admin.id });
   if (!member) throw httpError(404, 'Member not found');
 
   const allowed = [
@@ -125,29 +127,31 @@ router.put('/:member_id', asyncHandler(async (req, res) => {
   }
   if (req.body.plan_id !== undefined) {
     validateObjectId(req.body.plan_id, 'Invalid plan ID');
+    const plan = await Plan.findOne({ _id: req.body.plan_id, admin_id: req.admin.id }).lean();
+    if (!plan) throw httpError(404, 'Plan not found');
     member.plan_id = req.body.plan_id;
   }
   if (req.body.join_date !== undefined) member.join_date = parseDate(req.body.join_date);
   if (req.body.expiry_date !== undefined) member.expiry_date = parseDate(req.body.expiry_date);
 
   await member.save();
-  res.json(memberToResponse(member.toObject(), await findPlanName(member.plan_id)));
+  res.json(memberToResponse(member.toObject(), await findPlanName(member.plan_id, req.admin.id)));
 }));
 
 router.delete('/:member_id', asyncHandler(async (req, res) => {
   validateObjectId(req.params.member_id, 'Invalid member ID');
-  const result = await Member.deleteOne({ _id: req.params.member_id });
+  const result = await Member.deleteOne({ _id: req.params.member_id, admin_id: req.admin.id });
   if (result.deletedCount === 0) throw httpError(404, 'Member not found');
-  await Payment.deleteMany({ member_id: req.params.member_id });
+  await Payment.deleteMany({ member_id: req.params.member_id, admin_id: req.admin.id });
   res.json({ message: 'Member deleted successfully' });
 }));
 
 router.post('/:member_id/renew', asyncHandler(async (req, res) => {
   validateObjectId(req.params.member_id, 'Invalid member ID');
   validateObjectId(req.query.plan_id, 'Invalid plan ID');
-  const member = await Member.findById(req.params.member_id);
+  const member = await Member.findOne({ _id: req.params.member_id, admin_id: req.admin.id });
   if (!member) throw httpError(404, 'Member not found');
-  const plan = await Plan.findById(req.query.plan_id).lean();
+  const plan = await Plan.findOne({ _id: req.query.plan_id, admin_id: req.admin.id }).lean();
   if (!plan) throw httpError(404, 'Plan not found');
 
   const now = new Date();
@@ -164,6 +168,7 @@ router.post('/:member_id/renew', asyncHandler(async (req, res) => {
     plan_name: plan.name,
     payment_method: 'cash',
     notes: `Membership renewal - ${plan.name}`,
+    admin_id: req.admin.id,
   });
 
   res.json(memberToResponse(member.toObject(), plan.name));

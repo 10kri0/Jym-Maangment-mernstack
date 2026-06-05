@@ -5,6 +5,7 @@ const Admin = require('../models/Admin');
 const { env } = require('../config/env');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { httpError } = require('../utils/httpError');
+const { requireAdmin } = require('../middleware/auth');
 
 const DEFAULT_ADMIN_EMAIL = 'admin@am.com';
 const DEFAULT_ADMIN_PASSWORD = '123';
@@ -51,7 +52,7 @@ router.post('/login', asyncHandler(async (req, res) => {
   }
 
   const accessToken = jwt.sign(
-    { sub: admin.email },
+    { sub: admin.email, id: admin._id, role: admin.role || 'admin' },
     env.JWT_SECRET,
     { expiresIn: `${env.JWT_EXPIRY_HOURS}h` }
   );
@@ -61,7 +62,25 @@ router.post('/login', asyncHandler(async (req, res) => {
     token_type: 'bearer',
     admin_name: admin.name,
     admin_email: admin.email,
+    admin_role: admin.role || 'admin',
   });
+}));
+
+router.put('/change-password', requireAdmin, asyncHandler(async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    throw httpError(400, 'Current and new passwords are required');
+  }
+
+  const admin = await Admin.findOne({ email: req.admin.email });
+  if (!admin || !(await bcrypt.compare(current_password, admin.password))) {
+    throw httpError(400, 'Incorrect current password');
+  }
+
+  admin.password = await bcrypt.hash(new_password, 10);
+  await admin.save();
+
+  res.json({ message: 'Password updated successfully' });
 }));
 
 module.exports = router;

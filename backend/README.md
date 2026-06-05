@@ -47,13 +47,14 @@ DATABASE_NAME=gym_management
 JWT_SECRET=change_this_to_a_long_random_secret
 JWT_EXPIRY_HOURS=24
 MONGODB_SERVER_SELECTION_TIMEOUT_MS=5000
+FRONTEND_ORIGINS=http://localhost:5173,https://amfitnesseru.vercel.app
 ```
 
-## Default Admin
+## Default Seeded Logins
 
 ```text
-Email: admin@gym.com
-Password: admin123
+Superadmin: superadmin@gym.com / superadmin123
+Client admin: admin@am.com / 123
 ```
 
 ## Main Endpoints

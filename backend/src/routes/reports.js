@@ -20,9 +20,10 @@ function defaultRevenueRange(req) {
 
 function membersQuery(req) {
   const now = new Date();
-  if (req.query.status_filter === 'active') return { expiry_date: { $gte: now } };
-  if (req.query.status_filter === 'expired') return { expiry_date: { $lt: now } };
-  return {};
+  const query = { admin_id: req.admin.id };
+  if (req.query.status_filter === 'active') query.expiry_date = { $gte: now };
+  if (req.query.status_filter === 'expired') query.expiry_date = { $lt: now };
+  return query;
 }
 
 function sendWorkbook(res, workbook, filename) {
@@ -41,14 +42,14 @@ function buildPdf(callback) {
   });
 }
 
-async function planName(planId) {
-  const plan = await Plan.findById(planId).lean();
+async function planName(planId, adminId) {
+  const plan = await Plan.findOne({ _id: planId, admin_id: adminId }).lean();
   return plan?.name || 'Unknown';
 }
 
 router.get('/revenue/excel', asyncHandler(async (req, res) => {
   const { start, end, now } = defaultRevenueRange(req);
-  const payments = await Payment.find({ date: { $gte: start, $lte: end } }).sort({ date: -1 }).lean();
+  const payments = await Payment.find({ admin_id: req.admin.id, date: { $gte: start, $lte: end } }).sort({ date: -1 }).lean();
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Revenue Report');
@@ -65,7 +66,7 @@ router.get('/revenue/excel', asyncHandler(async (req, res) => {
 
   let total = 0;
   for (const payment of payments) {
-    const member = await Member.findById(payment.member_id).lean();
+    const member = await Member.findOne({ _id: payment.member_id, admin_id: req.admin.id }).lean();
     sheet.addRow([
       payment.date.toISOString().slice(0, 16).replace('T', ' '),
       String(payment.member_id || ''),
@@ -105,7 +106,7 @@ router.get('/members/excel', asyncHandler(async (req, res) => {
       member.mobile,
       member.email || '',
       member.address || '',
-      await planName(member.plan_id),
+      await planName(member.plan_id, req.admin.id),
       member.join_date.toISOString().slice(0, 10),
       member.expiry_date.toISOString().slice(0, 10),
       member.payment_status,
@@ -118,28 +119,78 @@ router.get('/members/excel', asyncHandler(async (req, res) => {
 
 router.get('/revenue/pdf', asyncHandler(async (req, res) => {
   const { start, end, now } = defaultRevenueRange(req);
-  const payments = await Payment.find({ date: { $gte: start, $lte: end } }).sort({ date: -1 }).lean();
+  const payments = await Payment.find({ admin_id: req.admin.id, date: { $gte: start, $lte: end } }).sort({ date: -1 }).lean();
 
   const buffer = await buildPdf(async (doc) => {
-    doc.fontSize(20).fillColor('#6366F1').text('Revenue Report', { align: 'center' });
-    doc.moveDown(0.5).fontSize(10).fillColor('#111111')
-      .text(`Period: ${start.toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`);
-    doc.moveDown();
-    doc.font('Helvetica-Bold').text('Date        Member                  Plan              Amount   Method');
-    doc.font('Helvetica');
+    doc.fontSize(22).fillColor('#6366F1').font('Helvetica-Bold').text('Revenue Report', { align: 'center' });
+    doc.moveDown(0.2).fontSize(10).fillColor('#4B5563').font('Helvetica')
+      .text(`Period: ${start.toISOString().slice(0, 10)} to ${end.toISOString().slice(0, 10)}`, { align: 'center' });
+    doc.moveDown(1.5);
+
+    let y = 110;
+    const colWidths = [90, 140, 110, 80, 80];
+    const colX = [40, 130, 270, 380, 460];
+    const headers = ['Date', 'Member Name', 'Plan', 'Amount (Rs)', 'Method'];
+
+    const drawHeader = (doc, currentY) => {
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
+      doc.rect(40, currentY - 4, 500, 20).fill('#6366F1');
+      doc.fillColor('#FFFFFF');
+      headers.forEach((text, i) => {
+        doc.text(text, colX[i], currentY, {
+          width: colWidths[i] - 10,
+          align: i === 3 ? 'right' : 'left',
+        });
+      });
+      return currentY + 22;
+    };
+
+    y = drawHeader(doc, y);
     let total = 0;
-    for (const payment of payments.slice(0, 45)) {
-      const member = await Member.findById(payment.member_id).lean();
+
+    for (const payment of payments) {
+      const member = await Member.findOne({ _id: payment.member_id, admin_id: req.admin.id }).lean();
       total += payment.amount;
-      doc.text([
-        payment.date.toISOString().slice(0, 10).padEnd(12),
-        (member?.full_name || 'Deleted').slice(0, 20).padEnd(22),
-        (payment.plan_name || '').slice(0, 16).padEnd(18),
-        String(payment.amount).padEnd(8),
+
+      if (y > 750) {
+        doc.addPage();
+        y = 50;
+        y = drawHeader(doc, y);
+      }
+
+      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
+      const rowData = [
+        payment.date.toISOString().slice(0, 10),
+        member?.full_name || 'Deleted Member',
+        payment.plan_name || '',
+        payment.amount.toLocaleString('en-IN'),
         payment.payment_method || 'cash',
-      ].join(' '));
+      ];
+
+      rowData.forEach((text, i) => {
+        doc.text(String(text), colX[i], y, {
+          width: colWidths[i] - 10,
+          align: i === 3 ? 'right' : 'left',
+          ellipsis: true,
+        });
+      });
+
+      doc.moveTo(40, y + 14)
+         .lineTo(540, y + 14)
+         .strokeColor('#E5E7EB')
+         .lineWidth(0.5)
+         .stroke();
+
+      y += 20;
     }
-    doc.moveDown().font('Helvetica-Bold').text(`TOTAL: Rs ${total.toLocaleString('en-IN')}`);
+
+    if (y > 730) {
+      doc.addPage();
+      y = 50;
+    }
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#111111');
+    doc.text(`Total Revenue: Rs ${total.toLocaleString('en-IN')}`, 40, y, { align: 'right', width: 500 });
   });
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -152,21 +203,66 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
   const members = await Member.find(membersQuery(req)).sort({ full_name: 1 }).lean();
 
   const buffer = await buildPdf(async (doc) => {
-    doc.fontSize(20).fillColor('#10B981').text('Members Report', { align: 'center' });
-    doc.moveDown(0.5).fontSize(10).fillColor('#111111')
-      .text(`Generated: ${now.toISOString().slice(0, 16).replace('T', ' ')}`);
-    doc.moveDown();
-    doc.font('Helvetica-Bold').text('Name                  Mobile       Plan              Expiry      Status');
-    doc.font('Helvetica');
-    for (const member of members.slice(0, 55)) {
+    doc.fontSize(22).fillColor('#10B981').font('Helvetica-Bold').text('Members Report', { align: 'center' });
+    doc.moveDown(0.2).fontSize(10).fillColor('#4B5563').font('Helvetica')
+      .text(`Generated: ${now.toISOString().slice(0, 16).replace('T', ' ')}`, { align: 'center' });
+    doc.moveDown(1.5);
+
+    let y = 110;
+    const colWidths = [120, 80, 110, 80, 60, 50];
+    const colX = [40, 160, 240, 350, 430, 490];
+    const headers = ['Name', 'Mobile', 'Plan', 'Expiry Date', 'Status', 'Paid'];
+
+    const drawHeader = (doc, currentY) => {
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
+      doc.rect(40, currentY - 4, 500, 20).fill('#10B981');
+      doc.fillColor('#FFFFFF');
+      headers.forEach((text, i) => {
+        doc.text(text, colX[i], currentY, {
+          width: colWidths[i] - 10,
+          align: i === 5 ? 'right' : 'left',
+        });
+      });
+      return currentY + 22;
+    };
+
+    y = drawHeader(doc, y);
+
+    for (const member of members) {
       const status = member.expiry_date >= now ? 'Active' : 'Expired';
-      doc.text([
-        member.full_name.slice(0, 20).padEnd(22),
-        member.mobile.padEnd(12),
-        (await planName(member.plan_id)).slice(0, 16).padEnd(18),
-        member.expiry_date.toISOString().slice(0, 10).padEnd(12),
+      const plan = await planName(member.plan_id, req.admin.id);
+
+      if (y > 750) {
+        doc.addPage();
+        y = 50;
+        y = drawHeader(doc, y);
+      }
+
+      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
+      const rowData = [
+        member.full_name,
+        member.mobile,
+        plan,
+        member.expiry_date.toISOString().slice(0, 10),
         status,
-      ].join(' '));
+        (member.amount_paid || 0).toLocaleString('en-IN'),
+      ];
+
+      rowData.forEach((text, i) => {
+        doc.text(String(text), colX[i], y, {
+          width: colWidths[i] - 10,
+          align: i === 5 ? 'right' : 'left',
+          ellipsis: true,
+        });
+      });
+
+      doc.moveTo(40, y + 14)
+         .lineTo(540, y + 14)
+         .strokeColor('#E5E7EB')
+         .lineWidth(0.5)
+         .stroke();
+
+      y += 20;
     }
   });
 

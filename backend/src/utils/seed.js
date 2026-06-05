@@ -4,6 +4,9 @@ const Plan = require('../models/Plan');
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
 
+const DEFAULT_SUPERADMIN_EMAIL = 'superadmin@gym.com';
+const DEFAULT_SUPERADMIN_PASSWORD = 'superadmin123';
+
 const DEFAULT_ADMIN_EMAIL = 'admin@am.com';
 const DEFAULT_ADMIN_PASSWORD = '123';
 
@@ -16,18 +19,36 @@ function randomInt(min, max) {
 }
 
 async function seedDatabase() {
-  const adminExists = await Admin.findOne({ email: DEFAULT_ADMIN_EMAIL });
-  if (!adminExists) {
-    await Admin.create({
-      name: 'Admin',
-      email: DEFAULT_ADMIN_EMAIL,
-      password: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10),
+  // Ensure default superadmin exists
+  let superadmin = await Admin.findOne({ email: DEFAULT_SUPERADMIN_EMAIL });
+  if (!superadmin) {
+    superadmin = await Admin.create({
+      name: 'Super Admin',
+      email: DEFAULT_SUPERADMIN_EMAIL,
+      password: await bcrypt.hash(DEFAULT_SUPERADMIN_PASSWORD, 10),
+      role: 'superadmin',
     });
   }
 
+  // Ensure default client admin exists
+  let clientAdmin = await Admin.findOne({ email: DEFAULT_ADMIN_EMAIL });
+  if (!clientAdmin) {
+    clientAdmin = await Admin.create({
+      name: 'Admin',
+      email: DEFAULT_ADMIN_EMAIL,
+      password: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10),
+      role: 'admin',
+    });
+  }
+
+  // Migrate legacy data if any exists without admin_id
+  await Plan.updateMany({ admin_id: { $exists: false } }, { $set: { admin_id: clientAdmin._id } });
+  await Member.updateMany({ admin_id: { $exists: false } }, { $set: { admin_id: clientAdmin._id } });
+  await Payment.updateMany({ admin_id: { $exists: false } }, { $set: { admin_id: clientAdmin._id } });
+
   const plansExist = await Plan.exists({});
   if (plansExist) {
-    console.log('Database already seeded');
+    console.log('Database already seeded (migrated legacy documents if any)');
     return;
   }
 
@@ -40,6 +61,7 @@ async function seedDatabase() {
       price: 999,
       description: 'Access to gym floor and basic equipment. Perfect for beginners.',
       is_active: true,
+      admin_id: clientAdmin._id,
     },
     {
       name: 'Quarterly Premium',
@@ -47,6 +69,7 @@ async function seedDatabase() {
       price: 2499,
       description: 'Full gym access with cardio zone, weight training, and group classes.',
       is_active: true,
+      admin_id: clientAdmin._id,
     },
     {
       name: 'Half Yearly Gold',
@@ -54,6 +77,7 @@ async function seedDatabase() {
       price: 4499,
       description: 'Everything in Premium + personal trainer sessions twice a week.',
       is_active: true,
+      admin_id: clientAdmin._id,
     },
     {
       name: 'Annual Platinum',
@@ -61,6 +85,7 @@ async function seedDatabase() {
       price: 7999,
       description: 'All-inclusive access with unlimited personal training, diet plan, and spa.',
       is_active: true,
+      admin_id: clientAdmin._id,
     },
   ]);
 
@@ -104,6 +129,7 @@ async function seedDatabase() {
       expiry_date: expiryDate,
       payment_status: paymentStatus,
       amount_paid: paymentStatus === 'paid' ? plan.price : 0,
+      admin_id: clientAdmin._id,
       created_at: joinDate,
       updated_at: joinDate,
     });
@@ -117,6 +143,7 @@ async function seedDatabase() {
         payment_method: pick(paymentMethods),
         date: new Date(joinDate.getTime() + randomInt(0, 12) * 60 * 60 * 1000),
         notes: `Membership payment - ${plan.name}`,
+        admin_id: clientAdmin._id,
       });
     }
   }
@@ -133,6 +160,7 @@ async function seedDatabase() {
       payment_method: pick(paymentMethods),
       date: new Date(now.getTime() - randomInt(1, 365) * 24 * 60 * 60 * 1000),
       notes: `Renewal payment - ${plan.name}`,
+      admin_id: clientAdmin._id,
     });
   }
 
