@@ -152,13 +152,6 @@ router.get('/revenue/pdf', asyncHandler(async (req, res) => {
       const member = await Member.findOne({ _id: payment.member_id, admin_id: req.admin.id }).lean();
       total += payment.amount;
 
-      if (y > 750) {
-        doc.addPage();
-        y = 50;
-        y = drawHeader(doc, y);
-      }
-
-      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
       const rowData = [
         payment.date.toISOString().slice(0, 10),
         member?.full_name || 'Deleted Member',
@@ -167,21 +160,40 @@ router.get('/revenue/pdf', asyncHandler(async (req, res) => {
         payment.payment_method || 'cash',
       ];
 
+      doc.font('Helvetica').fontSize(9);
+      let maxCellHeight = 0;
       rowData.forEach((text, i) => {
-        doc.text(String(text), colX[i], y, {
+        const cellHeight = doc.heightOfString(String(text), {
           width: colWidths[i] - 10,
           align: i === 3 ? 'right' : 'left',
-          ellipsis: true,
+        });
+        if (cellHeight > maxCellHeight) {
+          maxCellHeight = cellHeight;
+        }
+      });
+      const rowHeight = maxCellHeight + 8;
+
+      if (y + rowHeight > 750) {
+        doc.addPage();
+        y = 50;
+        y = drawHeader(doc, y);
+      }
+
+      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
+      rowData.forEach((text, i) => {
+        doc.text(String(text), colX[i], y + 4, {
+          width: colWidths[i] - 10,
+          align: i === 3 ? 'right' : 'left',
         });
       });
 
-      doc.moveTo(40, y + 14)
-         .lineTo(540, y + 14)
+      doc.moveTo(40, y + rowHeight)
+         .lineTo(540, y + rowHeight)
          .strokeColor('#E5E7EB')
          .lineWidth(0.5)
          .stroke();
 
-      y += 20;
+      y += rowHeight;
     }
 
     if (y > 730) {
@@ -233,13 +245,6 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
       const status = member.expiry_date >= now ? 'Active' : 'Expired';
       const plan = await planName(member.plan_id, req.admin.id);
 
-      if (y > 750) {
-        doc.addPage();
-        y = 50;
-        y = drawHeader(doc, y);
-      }
-
-      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
       const firstName = member.full_name ? member.full_name.trim().split(/\s+/)[0] : '';
       const rowData = [
         index++,
@@ -252,21 +257,40 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
         (member.amount_paid || 0).toLocaleString('en-IN'),
       ];
 
+      doc.font('Helvetica').fontSize(9);
+      let maxCellHeight = 0;
       rowData.forEach((text, i) => {
-        doc.text(String(text), colX[i], y, {
+        const cellHeight = doc.heightOfString(String(text), {
           width: colWidths[i] - 10,
           align: i === 7 ? 'right' : 'left',
-          ellipsis: true,
+        });
+        if (cellHeight > maxCellHeight) {
+          maxCellHeight = cellHeight;
+        }
+      });
+      const rowHeight = maxCellHeight + 8;
+
+      if (y + rowHeight > 750) {
+        doc.addPage();
+        y = 50;
+        y = drawHeader(doc, y);
+      }
+
+      doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
+      rowData.forEach((text, i) => {
+        doc.text(String(text), colX[i], y + 4, {
+          width: colWidths[i] - 10,
+          align: i === 7 ? 'right' : 'left',
         });
       });
 
-      doc.moveTo(40, y + 14)
-         .lineTo(540, y + 14)
+      doc.moveTo(40, y + rowHeight)
+         .lineTo(540, y + rowHeight)
          .strokeColor('#E5E7EB')
          .lineWidth(0.5)
          .stroke();
 
-      y += 20;
+      y += rowHeight;
     }
   });
 
