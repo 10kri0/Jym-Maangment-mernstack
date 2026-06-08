@@ -94,22 +94,25 @@ router.get('/members/excel', asyncHandler(async (req, res) => {
   sheet.getCell('A1').value = `Members Report - Generated ${now.toISOString().slice(0, 10)}`;
   sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: '10B981' } };
   sheet.addRow([]);
-  sheet.addRow(['Name', 'Mobile', 'Email', 'Address', 'Plan', 'Join Date', 'Expiry Date', 'Payment Status']);
+  sheet.addRow(['Index', 'First Name', 'Address', 'Plan', 'Start Date', 'Expiry Date', 'Status', 'Paid']);
   sheet.getRow(3).eachCell((cell) => {
     cell.font = { bold: true, color: { argb: 'FFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '10B981' } };
   });
 
+  let index = 1;
   for (const member of members) {
+    const firstName = member.full_name ? member.full_name.trim().split(/\s+/)[0] : '';
+    const status = member.expiry_date >= now ? 'Active' : 'Expired';
     sheet.addRow([
-      member.full_name,
-      member.mobile,
-      member.email || '',
+      index++,
+      firstName,
       member.address || '',
       await planName(member.plan_id, req.admin.id),
-      member.join_date.toISOString().slice(0, 10),
-      member.expiry_date.toISOString().slice(0, 10),
-      member.payment_status,
+      member.join_date ? member.join_date.toISOString().slice(0, 10) : '',
+      member.expiry_date ? member.expiry_date.toISOString().slice(0, 10) : '',
+      status,
+      member.amount_paid || 0,
     ]);
   }
   sheet.columns.forEach((column) => { column.width = 22; });
