@@ -209,9 +209,9 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
     doc.moveDown(1.5);
 
     let y = 110;
-    const colWidths = [120, 80, 110, 80, 60, 50];
-    const colX = [40, 160, 240, 350, 430, 490];
-    const headers = ['Name', 'Mobile', 'Plan', 'Expiry Date', 'Status', 'Paid'];
+    const colWidths = [30, 70, 95, 65, 60, 60, 50, 70];
+    const colX = [40, 70, 140, 235, 300, 360, 420, 470];
+    const headers = ['Index', 'First Name', 'Address', 'Plan', 'Start Date', 'Expiry Date', 'Status', 'Paid'];
 
     const drawHeader = (doc, currentY) => {
       doc.font('Helvetica-Bold').fontSize(9).fillColor('#FFFFFF');
@@ -220,7 +220,7 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
       headers.forEach((text, i) => {
         doc.text(text, colX[i], currentY, {
           width: colWidths[i] - 10,
-          align: i === 5 ? 'right' : 'left',
+          align: i === 7 ? 'right' : 'left',
         });
       });
       return currentY + 22;
@@ -228,6 +228,7 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
 
     y = drawHeader(doc, y);
 
+    let index = 1;
     for (const member of members) {
       const status = member.expiry_date >= now ? 'Active' : 'Expired';
       const plan = await planName(member.plan_id, req.admin.id);
@@ -239,11 +240,14 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
       }
 
       doc.font('Helvetica').fontSize(9).fillColor('#1F2937');
+      const firstName = member.full_name ? member.full_name.trim().split(/\s+/)[0] : '';
       const rowData = [
-        member.full_name,
-        member.mobile,
+        index++,
+        firstName,
+        member.address || '',
         plan,
-        member.expiry_date.toISOString().slice(0, 10),
+        member.join_date ? member.join_date.toISOString().slice(0, 10) : '',
+        member.expiry_date ? member.expiry_date.toISOString().slice(0, 10) : '',
         status,
         (member.amount_paid || 0).toLocaleString('en-IN'),
       ];
@@ -251,7 +255,7 @@ router.get('/members/pdf', asyncHandler(async (req, res) => {
       rowData.forEach((text, i) => {
         doc.text(String(text), colX[i], y, {
           width: colWidths[i] - 10,
-          align: i === 5 ? 'right' : 'left',
+          align: i === 7 ? 'right' : 'left',
           ellipsis: true,
         });
       });

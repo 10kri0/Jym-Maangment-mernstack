@@ -34,7 +34,9 @@ export default function Login() {
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl p-8 animate-slide-up">
           {/* Logo */}
           <div className="text-center mb-8">
-            <img src="/logo.png" alt="GymHub Logo" className="w-16 h-16 mx-auto object-contain rounded-2xl shadow-xl shadow-primary-500/40 mb-4 animate-pulse-glow" />
+            <div className="w-16 h-16 mx-auto rounded-2xl gradient-primary flex items-center justify-center shadow-xl shadow-primary-500/40 mb-4 animate-pulse-glow">
+              <FaDumbbell className="text-white text-2xl" />
+            </div>
             <h1 className="text-3xl font-bold text-white mb-1">GymHub</h1>
             <p className="text-gray-300 text-sm">Admin Panel Login</p>
           </div>
@@ -110,7 +112,7 @@ export default function Login() {
           </form>
 
           <p className="text-center text-gray-400 text-xs mt-6">
-            © 2024 GymPro. All rights reserved.
+            © 2026 GymHub. All rights reserved.
           </p>
         </div>
       </div>
